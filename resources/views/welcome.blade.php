@@ -3,10 +3,8 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-
-    <!-- Tailwind CSS CDN -->
+    <title>Pencatat Tugas Kuliah</title>
     <script src="https://cdn.tailwindcss.com"></script>
-    <!-- Font Inter & Lucide Icons -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
@@ -30,25 +28,28 @@
         }
     </script>
     <style>
-        ::-webkit-scrollbar {
-            display: none;
+        ::-webkit-scrollbar { display: none; }
+        * { -ms-overflow-style: none; scrollbar-width: none; }
+
+        input[type="number"]::-webkit-inner-spin-button,
+        input[type="number"]::-webkit-outer-spin-button {
+            -webkit-appearance: none;
+            margin: 0;
         }
-        * {
-            -ms-overflow-style: none;
-            scrollbar-width: none;
+        input[type="number"] {
+            -moz-appearance: textfield;
         }
     </style>
 </head>
 <body class="bg-notionBg text-gray-200 min-h-screen font-sans antialiased pb-20 selection:bg-indigo-500 selection:text-white overflow-x-hidden">
 
-    <!-- Header Section (Tanpa Logo) -->
+    <!-- Header Section -->
     <header class="border-b border-notionBorder bg-notionCard/50 backdrop-blur-md sticky top-0 z-30">
         <div class="max-w-7xl mx-auto px-6 py-4 flex justify-between items-center">
             <div class="flex items-center space-x-3">
                 <div>
-                    <!-- 2. GANTI NAMA WEB UTAMA DI SINI -->
                     <h1 class="text-xl font-bold text-white tracking-tight">Pencatat Tugas Kuliah</h1>
-                    <p class="text-xs text-gray-400">Kelola deadline & tugas perkuliahan secara terorganisir</p>
+                    <p class="text-xs text-gray-400">Kelola deadline & tugas perkuliahanmu secara mandiri</p>
                 </div>
             </div>
             <div class="flex items-center gap-3">
@@ -85,26 +86,26 @@
         @endif
 
         @php
-            $allTasks = $tasksByWeek->flatten();
+            $allTasks = $tasksByWeek->flatten(1);
             $totalTasks = $allTasks->count();
             $inProgress = $allTasks->where('status', 'In progress')->count();
             $completed = $allTasks->where('status', 'Done')->count();
 
-            // Logika Reminder Deadline (Ambil semua yang status != Done dan deadline <= 3 hari / terlewat)
+            // Logika Reminder Deadline
             $urgentTasks = $allTasks->filter(function($t) {
-                if ($t->status === 'Done' || empty($t->deadline)) return false;
+                if (($t['status'] ?? '') === 'Done' || empty($t['deadline'])) return false;
                 
                 $today = \Carbon\Carbon::today();
-                $deadline = \Carbon\Carbon::parse($t->deadline)->startOfDay();
+                $deadline = \Carbon\Carbon::parse($t['deadline'])->startOfDay();
                 $daysLeft = (int) $today->diffInDays($deadline, false);
                 
                 return $daysLeft <= 3;
             })->sortBy(function($t) {
-                return \Carbon\Carbon::parse($t->deadline)->timestamp;
+                return \Carbon\Carbon::parse($t['deadline'])->timestamp;
             });
         @endphp
 
-        <!-- Banner Reminder Deadline (Bisa Memuat Banyak Deadline) -->
+        <!-- Banner Reminder Deadline -->
         @if($urgentTasks->count() > 0)
             <div class="mb-8 p-4 bg-rose-950/40 border border-rose-500/40 rounded-2xl backdrop-blur-sm shadow-lg">
                 <div class="flex items-center justify-between mb-3 pb-2 border-b border-rose-500/20">
@@ -121,13 +122,13 @@
                     @foreach($urgentTasks as $uTask)
                         @php
                             $today = \Carbon\Carbon::today();
-                            $deadline = \Carbon\Carbon::parse($uTask->deadline)->startOfDay();
+                            $deadline = \Carbon\Carbon::parse($uTask['deadline'])->startOfDay();
                             $daysLeft = (int) $today->diffInDays($deadline, false);
                         @endphp
                         <div class="bg-notionCard/90 border border-rose-800/50 p-3 rounded-xl flex justify-between items-center text-xs hover:border-rose-500/50 transition">
                             <div class="min-w-0 pr-2">
-                                <p class="font-bold text-white text-sm truncate" title="{{ $uTask->tugas }}">{{ $uTask->tugas }}</p>
-                                <p class="text-gray-400 mt-0.5 truncate">{{ $uTask->matkul }} • {{ $deadline->format('d M Y') }}</p>
+                                <p class="font-bold text-white text-sm truncate" title="{{ $uTask['tugas'] }}">{{ $uTask['tugas'] }}</p>
+                                <p class="text-gray-400 mt-0.5 truncate">{{ $uTask['matkul'] }} • {{ $deadline->format('d M Y') }}</p>
                             </div>
                             <span class="px-2.5 py-1 rounded-md font-bold shrink-0 shadow-sm text-center
                                 {{ $daysLeft < 0 ? 'bg-red-900/80 text-red-200 border border-red-700' : 'bg-rose-500/20 text-rose-300 border border-rose-500/40' }}">
@@ -201,16 +202,16 @@
                             @foreach($tasks as $task)
                                 @php
                                     $today = \Carbon\Carbon::today();
-                                    $deadline = $task->deadline ? \Carbon\Carbon::parse($task->deadline)->startOfDay() : null;
-                                    $daysLeft = ($deadline && $task->status !== 'Done') ? (int) $today->diffInDays($deadline, false) : null;
+                                    $deadline = !empty($task['deadline']) ? \Carbon\Carbon::parse($task['deadline'])->startOfDay() : null;
+                                    $daysLeft = ($deadline && $task['status'] !== 'Done') ? (int) $today->diffInDays($deadline, false) : null;
                                 @endphp
                                 <tr class="hover:bg-notionHover/60 transition duration-150">
                                     <td class="py-3.5 px-3 font-medium">
                                         <span class="bg-indigo-950/80 text-indigo-200 border border-indigo-700/60 px-2.5 py-1.5 rounded-lg text-xs font-bold shadow-sm inline-block">
-                                            {{ $task->matkul }}
+                                            {{ $task['matkul'] }}
                                         </span>
                                     </td>
-                                    <td class="py-3.5 px-3 font-bold text-white text-sm">{{ $task->tugas }}</td>
+                                    <td class="py-3.5 px-3 font-bold text-white text-sm">{{ $task['tugas'] }}</td>
                                     <td class="py-3.5 px-3 text-gray-400 whitespace-nowrap text-xs">
                                         @if($deadline)
                                             <div class="flex items-center gap-1.5">
@@ -229,34 +230,34 @@
                                     </td>
                                     <td class="py-3.5 px-3 whitespace-nowrap">
                                         <span class="px-2 py-0.5 rounded-full text-xs font-semibold inline-flex items-center gap-1
-                                            {{ $task->tipe === 'Individu' ? 'bg-orange-950/60 text-orange-400 border border-orange-800/50' : 'bg-purple-950/60 text-purple-400 border border-purple-800/50' }}">
-                                            <i data-lucide="{{ $task->tipe === 'Individu' ? 'user' : 'users' }}" class="w-3 h-3"></i>
-                                            {{ $task->tipe }}
+                                            {{ $task['tipe'] === 'Individu' ? 'bg-orange-950/60 text-orange-400 border border-orange-800/50' : 'bg-purple-950/60 text-purple-400 border border-purple-800/50' }}">
+                                            <i data-lucide="{{ $task['tipe'] === 'Individu' ? 'user' : 'users' }}" class="w-3 h-3"></i>
+                                            {{ $task['tipe'] }}
                                         </span>
                                     </td>
                                     <td class="py-3.5 px-3 whitespace-nowrap">
                                         <span class="px-2 py-0.5 rounded-full text-xs font-semibold inline-flex items-center gap-1.5
-                                            @if($task->status === 'Done') bg-emerald-950/60 text-emerald-400 border border-emerald-800/50
-                                            @elseif($task->status === 'In progress') bg-amber-950/60 text-amber-400 border border-amber-800/50
+                                            @if($task['status'] === 'Done') bg-emerald-950/60 text-emerald-400 border border-emerald-800/50
+                                            @elseif($task['status'] === 'In progress') bg-amber-950/60 text-amber-400 border border-amber-800/50
                                             @else bg-rose-950/60 text-rose-400 border border-rose-800/50 @endif">
                                             <span class="w-1.5 h-1.5 rounded-full 
-                                                @if($task->status === 'Done') bg-emerald-400
-                                                @elseif($task->status === 'In progress') bg-amber-400
+                                                @if($task['status'] === 'Done') bg-emerald-400
+                                                @elseif($task['status'] === 'In progress') bg-amber-400
                                                 @else bg-rose-400 @endif"></span>
-                                            {{ $task->status }}
+                                            {{ $task['status'] }}
                                         </span>
                                     </td>
                                     <td class="py-3.5 px-3 max-w-[120px] truncate">
-                                        @if($task->files_media)
-                                            <a href="{{ $task->files_media }}" target="_blank" class="inline-flex items-center gap-1 text-indigo-400 hover:text-indigo-300 hover:underline text-xs">
+                                        @if(!empty($task['files_media']))
+                                            <a href="{{ $task['files_media'] }}" target="_blank" class="inline-flex items-center gap-1 text-indigo-400 hover:text-indigo-300 hover:underline text-xs">
                                                 <i data-lucide="external-link" class="w-3 h-3"></i>
-                                                <span class="truncate">{{ $task->files_media }}</span>
+                                                <span class="truncate">{{ $task['files_media'] }}</span>
                                             </a>
                                         @else
                                             <span class="text-gray-600 text-xs">-</span>
                                         @endif
                                     </td>
-                                    <td class="py-3.5 px-3 text-gray-400 max-w-[120px] truncate text-xs">{{ $task->catatan ?? '-' }}</td>
+                                    <td class="py-3.5 px-3 text-gray-400 max-w-[120px] truncate text-xs">{{ $task['catatan'] ?? '-' }}</td>
                                     <td class="py-3.5 px-3 text-right whitespace-nowrap">
                                         <div class="flex items-center justify-end gap-1.5">
                                             <!-- Tombol Edit -->
@@ -268,7 +269,7 @@
                                             </button>
 
                                             <!-- Tombol Hapus -->
-                                            <form action="{{ route('tasks.destroy', $task->id) }}" method="POST" onsubmit="return confirm('Yakin ingin menghapus tugas ini?');" class="inline">
+                                            <form action="{{ route('tasks.destroy', $task['id']) }}" method="POST" onsubmit="return confirm('Yakin ingin menghapus tugas ini?');" class="inline">
                                                 @csrf
                                                 @method('DELETE')
                                                 <button type="submit" class="p-1.5 text-gray-400 hover:text-rose-400 hover:bg-rose-400/10 rounded-lg transition" title="Hapus Tugas">
@@ -318,14 +319,14 @@
                     </div>
                     <div class="col-span-2">
                         <label class="block text-xs font-semibold text-gray-400 mb-1">Mata Kuliah</label>
-                        <input type="text" name="matkul" required placeholder="Pemrograman Web"
+                        <input type="text" name="matkul" required placeholder="Nama Mata Kuliah"
                                class="w-full bg-notionBg border border-notionBorder focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 p-2.5 rounded-xl text-sm text-white placeholder-gray-600 outline-none transition">
                     </div>
                 </div>
 
                 <div>
                     <label class="block text-xs font-semibold text-gray-400 mb-1">Judul Tugas</label>
-                    <input type="text" name="tugas" required placeholder="Membuat Landing Page"
+                    <input type="text" name="tugas" required placeholder="Judul Tugas"
                            class="w-full bg-notionBg border border-notionBorder focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 p-2.5 rounded-xl text-sm text-white placeholder-gray-600 outline-none transition">
                 </div>
 
@@ -346,9 +347,9 @@
                     <div>
                         <label class="block text-xs font-semibold text-gray-400 mb-1">Status</label>
                         <select name="status" class="w-full bg-notionBg border border-notionBorder focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 p-2.5 rounded-xl text-sm text-white outline-none transition">
-                            <option value="Not started">Not started</option>
-                            <option value="In progress">In progress</option>
-                            <option value="Done">Done</option>
+                            <option value="Not started">Belum</option>
+                            <option value="In progress">Masih OTW</option>
+                            <option value="Done">Selesai</option>
                         </select>
                     </div>
                 </div>
@@ -397,7 +398,7 @@
                 <div class="grid grid-cols-3 gap-3">
                     <div>
                         <label class="block text-xs font-semibold text-gray-400 mb-1">Minggu Ke-</label>
-                        <input type="number" id="edit_week" name="week" min="1" required
+                        <input type="number" id="edit_week" name="week" min="1" required placeholder="Ketik..."
                                class="w-full bg-notionBg border border-notionBorder focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 p-2.5 rounded-xl text-sm text-white outline-none transition">
                     </div>
                     <div class="col-span-2">
@@ -430,9 +431,9 @@
                     <div>
                         <label class="block text-xs font-semibold text-amber-400 mb-1">Status / Progress</label>
                         <select id="edit_status" name="status" class="w-full bg-notionBg border border-amber-500/50 focus:border-amber-500 focus:ring-1 focus:ring-amber-500 p-2.5 rounded-xl text-sm text-white outline-none transition">
-                            <option value="Not started">Not started</option>
-                            <option value="In progress">In progress</option>
-                            <option value="Done">Done</option>
+                            <option value="Not started">Belum</option>
+                            <option value="In progress">Masih OTW</option>
+                            <option value="Done">Selesai</option>
                         </select>
                     </div>
                 </div>
@@ -479,14 +480,14 @@
                 @forelse($histories ?? [] as $history)
                     <div class="p-3 bg-notionBg/60 border border-notionBorder rounded-xl flex items-start gap-3">
                         <div class="p-2 rounded-lg mt-0.5 shrink-0
-                            @if($history->action === 'created') bg-emerald-500/10 text-emerald-400
-                            @elseif($history->action === 'updated') bg-amber-500/10 text-amber-400
+                            @if(($history['action'] ?? '') === 'created') bg-emerald-500/10 text-emerald-400
+                            @elseif(($history['action'] ?? '') === 'updated') bg-amber-500/10 text-amber-400
                             @else bg-rose-500/10 text-rose-400 @endif">
-                            <i data-lucide="@if($history->action === 'created') plus-circle @elseif($history->action === 'updated') refresh-cw @else trash-2 @endif" class="w-4 h-4"></i>
+                            <i data-lucide="@if(($history['action'] ?? '') === 'created') plus-circle @elseif(($history['action'] ?? '') === 'updated') refresh-cw @else trash-2 @endif" class="w-4 h-4"></i>
                         </div>
                         <div class="flex-1 text-xs">
-                            <p class="text-gray-200 font-medium leading-relaxed">{{ $history->description }}</p>
-                            <p class="text-gray-500 text-[10px] mt-1">{{ $history->created_at->diffForHumans() }}</p>
+                            <p class="text-gray-200 font-medium leading-relaxed">{{ $history['description'] ?? '' }}</p>
+                            <p class="text-gray-500 text-[10px] mt-1">{{ $history['time'] ?? '' }}</p>
                         </div>
                     </div>
                 @empty
